@@ -3,7 +3,7 @@ const WebSocket = require("ws");
 const cors = require("cors");
 
 const app = express();
-const PORT = 3001;
+const PORT = 3002;
 
 app.use(cors());
 
@@ -21,7 +21,19 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     try {
       const data = JSON.parse(message);
-      if (data.tr_id === "H0STASP0" && data.tr_key) {
+      if (data.tr_id === "H0STCNT0" && data.tr_key) {
+        console.log(`Subscribed to stock price: ${data.tr_key}`);
+
+        const interval = setInterval(() => {
+          const stockData = generateStockData(data.tr_key);
+          ws.send(stockData);
+        }, 10);
+
+        ws.on("close", () => {
+          clearInterval(interval);
+          console.log("Client disconnected");
+        });
+      } else if (data.tr_id === "H0STASP0" && data.tr_key) {
         console.log(`Subscribed to order book: ${data.tr_key}`);
 
         const interval = setInterval(() => {
@@ -39,6 +51,19 @@ wss.on("connection", (ws) => {
     }
   });
 });
+
+function generateStockData(stockCode) {
+  const price = (70000 + Math.random() * 2000).toFixed(0);
+  const change = (Math.random() * 200 - 100).toFixed(0);
+  const changeRate = ((change / price) * 100).toFixed(2);
+  const timestamp = new Date();
+  const hours = timestamp.getHours().toString().padStart(2, "0");
+  const minutes = timestamp.getMinutes().toString().padStart(2, "0");
+  const seconds = timestamp.getSeconds().toString().padStart(2, "0");
+  const time = `${hours}${minutes}${seconds}`;
+
+  return `${stockCode}^${time}^${price}^5^${change}^${changeRate}`;
+}
 
 function generateOrderBookData(stockCode) {
   const timestamp = new Date();
