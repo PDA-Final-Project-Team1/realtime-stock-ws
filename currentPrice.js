@@ -22,12 +22,16 @@ wss.on("connection", (ws) => {
     try {
       const data = JSON.parse(message);
       if (data.tr_id === "H0STCNT0" && data.tr_key) {
-        console.log(`Subscribed to stock: ${data.tr_key}`);
+        // tr_key가 배열이면 그대로 사용, 단일 문자열이면 배열로 변환
+        const stockCodes = Array.isArray(data.tr_key) ? data.tr_key : [data.tr_key];
+        console.log(`Subscribed to stock: ${stockCodes.join(", ")}`);
 
         const interval = setInterval(() => {
-          const stockData = generateStockData(data.tr_key);
-          ws.send(stockData);
-        }, 10);
+          stockCodes.forEach((stockCode) => {
+            const stockData = generateStockData(stockCode);
+            ws.send(stockData);
+          });
+        }, 2000);
 
         ws.on("close", () => {
           clearInterval(interval);
@@ -40,6 +44,11 @@ wss.on("connection", (ws) => {
   });
 });
 
+/**
+ * 주어진 종목코드에 대한 주식 데이터를 생성합니다.
+ * @param {string} stockCode 종목 코드
+ * @return {string} 생성된 주식 데이터 문자열
+ */
 function generateStockData(stockCode) {
   const timestamp = new Date();
   const hours = timestamp.getHours().toString().padStart(2, "0");
@@ -51,12 +60,8 @@ function generateStockData(stockCode) {
   const change = (-900 + Math.random() * 200 - 100).toFixed(0);
   const changeRate = ((change / price) * 100).toFixed(2);
   const avgPrice = (price * (1 + Math.random() * 0.01)).toFixed(2);
-  const highPrice = (parseInt(price) + Math.floor(Math.random() * 300)).toFixed(
-    0
-  );
-  const lowPrice = (parseInt(price) - Math.floor(Math.random() * 300)).toFixed(
-    0
-  );
+  const highPrice = (parseInt(price) + Math.floor(Math.random() * 300)).toFixed(0);
+  const lowPrice = (parseInt(price) - Math.floor(Math.random() * 300)).toFixed(0);
   const volume = Math.floor(Math.random() * 15000000);
   const tradeValue = volume * price;
   const bidVolume = Math.floor(Math.random() * 70000);
@@ -66,9 +71,7 @@ function generateStockData(stockCode) {
   const programBuy = Math.floor(Math.random() * 20000);
   const programSell = Math.floor(Math.random() * 20000);
   const programNetBuy = programBuy - programSell;
-  const expectedPrice = (
-    parseInt(price) + Math.floor(Math.random() * 50 - 25)
-  ).toFixed(0);
+  const expectedPrice = (parseInt(price) + Math.floor(Math.random() * 50 - 25)).toFixed(0);
   const totalTradeVolume = Math.floor(Math.random() * 20000000);
 
   return `0|H0STCNT0|001|${stockCode}^${time}^${price}^5^${change}^${changeRate}^${avgPrice}^${price}^${highPrice}^${lowPrice}^${price}^${price}^2^${volume}^${tradeValue}^${bidVolume}^${askVolume}^${netBuy}^${foreignHold}^${programBuy}^${programSell}^5^0.42^63.09^090004^3^0^090706^5^-400^091435^2^100^20250224^31^N^130115^59740^1126598^2083435^0.23^${totalTradeVolume}^73.11^0^^${expectedPrice}`;
